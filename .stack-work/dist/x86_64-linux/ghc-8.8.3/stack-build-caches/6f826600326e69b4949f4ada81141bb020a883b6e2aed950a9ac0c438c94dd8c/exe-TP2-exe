@@ -1,0 +1,18 @@
+/home/bussa/.ghcup/ghc/8.8.3/lib/ghc-8.8.3/include/ghcversion.h:
+  hash: 40d1b759f485f1cd5a54141a6412691ac2b76930507289a16a6a7b89b045b4d2
+? /home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/.stack-work/dist/x86_64-linux/ghc-8.8.3/build/TP2-exe/autogen/Paths_TP2.hs
+: hash: 837f55ebda2ab054eb8321ce2cc2c9d3ef7a7fe36a6c8a9746e9c15a738a98ba
+? /home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/.stack-work/dist/x86_64-linux/ghc-8.8.3/build/TP2-exe/autogen/cabal_macros.h
+: hash: 29b9d161266f84c7010cb9b8297cb6de99a8ddaa2d0b7209688ecee718a80ca2
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/ChangeLog.md:
+  hash: b6db31e04d81c0e662bab2cbee2044b15c6a17422f0ed7b23ee85da5086cf956
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/README.md:
+  hash: 7a6d5cb38ef1bd8af98a911f831eb4352fabde8c1b3ac75ae436dba070996555
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/TP2.cabal:
+  hash: 756c792633e84e955c6f5616174cc3df57148746e465c90280baec67951f8b8d
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/app/Main.hs:
+  hash: 1880970b433f1104dc0189de307e0f0001bde157ea551b3ddeed5062fe501a4f
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/package.yaml:
+  hash: 3f5d9d8a2a57469ed5359f4daf48ab7a74a6eb0299ce2def67ad968547b7ac61
+/usr/include/stdc-predef.h:
+  hash: 8db4f65e62cade8ae4d9b77960ee6aee093255acc1b637e3fb37d79179733b15

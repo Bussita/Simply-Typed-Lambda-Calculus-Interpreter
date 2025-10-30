@@ -1,0 +1,24 @@
+/home/bussa/.ghcup/ghc/8.8.3/lib/ghc-8.8.3/include/ghcversion.h:
+  hash: 40d1b759f485f1cd5a54141a6412691ac2b76930507289a16a6a7b89b045b4d2
+? /home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/.stack-work/dist/x86_64-linux/ghc-8.8.3/build/autogen/Paths_TP2.hs
+: hash: a36dad6ffa32f0ef1c621dd0a645be67e2e7e0472d956050d5eeb451b1a2bcd5
+? /home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/.stack-work/dist/x86_64-linux/ghc-8.8.3/build/autogen/cabal_macros.h
+: hash: 29c1000bd380bc5949930d3f0d4af8a942447ab88c6590b84178dc1de7a1b4aa
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/ChangeLog.md:
+  hash: b6db31e04d81c0e662bab2cbee2044b15c6a17422f0ed7b23ee85da5086cf956
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/README.md:
+  hash: 7a6d5cb38ef1bd8af98a911f831eb4352fabde8c1b3ac75ae436dba070996555
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/TP2.cabal:
+  hash: 756c792633e84e955c6f5616174cc3df57148746e465c90280baec67951f8b8d
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/package.yaml:
+  hash: 3f5d9d8a2a57469ed5359f4daf48ab7a74a6eb0299ce2def67ad968547b7ac61
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/src/Common.hs:
+  hash: c18f467a1f4eb4701a3dc29bdbac50ad025d8d4ec7487cc872b67920340fde4e
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/src/Parse.y:
+  hash: fdc84850c1157735ac40989d1fda0cde1c20240de866c5120d955c2dae4857b8
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/src/PrettyPrinter.hs:
+  hash: 9491d18994f6082af5a86ab058c5e53608c73fe53f26de26d096f276c4f8e039
+/home/bussa/Escritorio/Facultad/LCC/ALP/Trabajo_Práctico_2/TP2/src/Simplytyped.hs:
+  hash: bf77b88ae8986855d62241948739e0bb74c2ed4979c96c7d795cc96fd64b182f
+/usr/include/stdc-predef.h:
+  hash: 8db4f65e62cade8ae4d9b77960ee6aee093255acc1b637e3fb37d79179733b15
