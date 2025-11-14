@@ -53,7 +53,7 @@ quote (VLam t f) = Lam t f
 
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
-eval env ((Lam t term1) :@: t2) = let v' = eval env t2 in 
+eval env ((Lam t term1) :@: t2) = let v' = eval env t2 in sub 
 
 
 
