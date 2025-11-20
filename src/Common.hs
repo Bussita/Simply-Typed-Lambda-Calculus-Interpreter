@@ -33,7 +33,7 @@ module Common where
                 -- naturales 
                 |  LZero
                 |  LSuc LamTerm
-                |  LRec LamTerm LamTeram LamTerm
+                |  LRec LamTerm LamTerm LamTerm
                 -- listas
                 |  LNil
                 |  LCons LamTerm LamTerm

@@ -31,6 +31,7 @@ conversionAux xs (LAbs var t term) = Lam t (conversionAux (var:xs) term)
 conversionAux xs (LVar var) = case isBound var xs 0 of
                                 Just i -> Bound i
                                 Nothing -> Free (Global var)
+conversionAux xs (LLet s t1 t) = Let (conversionAux xs t1) (conversionAux (s:xs) t)
 
 isBound :: String -> [String] -> Int -> Maybe Int
 isBound var (v:vs) i = if var == v then Just i else isBound var vs (i+1)
@@ -117,4 +118,5 @@ infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
     FunT t1 t2 -> if (tu == t1) then ret t2 else matchError t1 tu
     _          -> notfunError tt
 infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
+infer' c e (Let t1 t) = infer' c e t1 >>= \tt1 -> infer' (tt1 : c) e t >>= \tt -> ret tt
 
