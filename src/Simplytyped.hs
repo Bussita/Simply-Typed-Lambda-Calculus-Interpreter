@@ -57,10 +57,12 @@ eval :: NameEnv Value Type -> Term -> Value
 eval env (Free x) =
   case lookup x env of
     Just (v, _) -> v
-    Nothing -> error "Variable no encontrada"
+    Nothing -> notfoundError x
 
 eval env (Lam t body) =
   VLam t body
+
+eval env (Let t1 t2) = let v = eval env t1 in eval env (sub 0 (quote v) t2)
 
 eval env (t1 :@: t2) =
   case eval env t1 of
@@ -68,8 +70,6 @@ eval env (t1 :@: t2) =
       let v2 = eval env t2
       in eval env (sub 0 (quote v2) body)
     _ -> error "Aplicación a un no-lambda"
-
-
 
 ----------------------
 --- type checker
@@ -117,5 +117,4 @@ infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
     FunT t1 t2 -> if (tu == t1) then ret t2 else matchError t1 tu
     _          -> notfunError tt
 infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
-
 
