@@ -32,6 +32,9 @@ conversionAux xs (LVar var) = case isBound var xs 0 of
                                 Just i -> Bound i
                                 Nothing -> Free (Global var)
 conversionAux xs (LLet s t1 t) = Let (conversionAux xs t1) (conversionAux (s:xs) t)
+conversionAux xs (LZero) = Zero
+conversionAux xs (LSuc t) = Suc $ conversionAux xs t
+conversionAux xs (LRec t1 t2 t3) = Rec (conversionAux xs t1) (conversionAux xs t2) (conversionAux xs t3)
 
 isBound :: String -> [String] -> Int -> Maybe Int
 isBound var (v:vs) i = if var == v then Just i else isBound var vs (i+1)
@@ -51,6 +54,8 @@ sub i t (Lam t'  u)           = Lam t' (sub (i + 1) t u)
 -- convierte un valor en el término equivalente
 quote :: Value -> Term
 quote (VLam t f) = Lam t f
+quote (VNum NZero) = Zero
+quote (VNum (NSuc n)) = Suc (quote (VNum n))
 
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
@@ -72,6 +77,9 @@ eval env (t1 :@: t2) =
       in eval env (sub 0 (quote v2) body)
     _ -> error "Aplicación a un no-lambda"
 
+eval env (Rec t1 t2 t3) = case eval env t3 of
+                            VNum NZero -> eval env t1
+                            VNum (NSuc n) -> eval env (t2 :@: (Rec t1 t2 (quote (VNum n))) :@: (quote (VNum n)))
 ----------------------
 --- type checker
 -----------------------
@@ -119,4 +127,17 @@ infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
     _          -> notfunError tt
 infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
 infer' c e (Let t1 t) = infer' c e t1 >>= \tt1 -> infer' (tt1 : c) e t >>= \tt -> ret tt
+infer' c e Zero = ret NatT
+infer' c e (Suc t) = case infer' c e t of
+                      NatT -> ret NatT
+                      tt  -> matchError NatT tt
+infer' c e (Rec t1 t2 t3) = do
+                              type1 <- infer' c e t1
+                              type2 <- infer' c e t2
+                              type3 <- infer' c e t3
+                              if type3 == NatT then 
+                                if type2 == FunT type1 (FunT NatT type1)
+                                  then ret type1 else matchError (FunT type1 (FunT NatT type1)) type2
+                                else matchError NatT type3
+
 

@@ -45,6 +45,15 @@ pp ii vs (Let t u) =
     , text " in "
         <> parens (pp (ii + 1) vs u)
     ]
+pp ii vs Zero = text "0"
+pp ii vs (Suc t) = text "suc " <> parensIf (isApp t || isLam t || isLet t) (pp ii vs t)
+pp ii vs (Rec t1 t2 t3) =
+  sep [ text "R"
+      , nest 1 (pp ii vs t1)
+      , nest 1 (pp ii vs t2)
+      , nest 1 (pp ii vs t3)
+      ]
+
 
 isLam :: Term -> Bool
 isLam (Lam _ _) = True
