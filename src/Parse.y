@@ -3,7 +3,6 @@ module Parse where
 import Common
 import Data.Maybe
 import Data.Char
-
 }
 
 %monad { P } { thenP } { returnP }
@@ -23,19 +22,25 @@ import Data.Char
     ')'     { TClose }
     '['     { TOpenB }
     ']'     { TCloseB }
-    ','     { TComma }        -- añadido
+    ','     { TComma }
     '->'    { TArrow }
     VAR     { TVar $$ }
-    NUM     { TNum $$ }       -- añadido
+    NUM     { TNum $$ }
     TYPEE   { TTypeE }
     DEF     { TDef }
     LET     { TLet }
     IN      { TIn }
-    
+    R       { TR }
+    SUC     { TSuc }
+    NIL     { TNil }
+    CONS    { TCons }
 
 %left '=' 
 %right '->'
-%right '\\' '.' 
+%left 'cons'
+%left 'R'
+%left 'suc'
+%right '\\' '.'
 
 %%
 
@@ -45,18 +50,32 @@ Defexp  : DEF VAR '=' Exp              { Def $2 $4 }
 
 Exp     :: { LamTerm }
         : '\\' VAR ':' Type '.' Exp    { LAbs $2 $4 $6 }
-        | NAbs                         { $1 }
+        | NAbs1                        { $1 }
         
-NAbs    :: { LamTerm }
-        : NAbs Atom                    { LApp $1 $2 }
+NAbs1   :: { LamTerm }
+        : R Exp Exp Exp                { LRec $2 $3 $4 }
+        | NAbs2                        { $1 }
+
+NAbs2   :: { LamTerm }
+        : CONS Atom Atom               { LCons $2 $3 }
+        | NAbs3                        { $1 }
+
+NAbs3   :: { LamTerm }
+        : SUC Exp                      { LSuc $2 }
+        | NAbs4                        { $1 }
+
+NAbs4   :: { LamTerm }
+        : NAbs4 Atom                   { LApp $1 $2 }
         | Atom                         { $1 }
 
 Atom    :: { LamTerm }
         : VAR                          { LVar $1 }  
         | '(' Exp ')'                  { $2 }
-        | LET VAR '=' Exp IN Exp      { LLet $2 $4 $6 }
-        | '[' ']'                      { LNil }                      -- lista vacía
-        | '[' Ints ']'                 { makeListFromInts $2 }      -- lista de enteros
+        | LET VAR '=' Exp IN Exp       { LLet $2 $4 $6 }
+        | NIL                          { LNil }
+        | '[' ']'                      { LNil }
+        | '[' Ints ']'                 { makeListFromInts $2 }
+        | NUM                          { makeNumTerm (read $1) }
 
 Ints    :: { [Int] }
         : NUM                          { [ read $1 ] }
@@ -113,8 +132,12 @@ data Token = TVar String
                | TEOF
                | TOpenB
                | TCloseB
-               | TComma      -- añadido
-               | TNum String -- añadido
+               | TComma
+               | TNum String
+               | TR
+               | TSuc
+               | TNil
+               | TCons
                deriving Show
 
 ----------------------------------
@@ -124,7 +147,7 @@ lexer cont s = case s of
                     (c:cs)
                           | isSpace c -> lexer cont cs
                           | isAlpha c -> lexVar (c:cs)
-                          | isDigit c -> lexNum (c:cs)               -- añadido
+                          | isDigit c -> lexNum (c:cs)
                     ('-':('-':cs)) -> lexer cont $ dropWhile ((/=) '\n') cs
                     ('{':('-':cs)) -> consumirBK 0 0 cont cs	
                     ('-':('}':cs)) -> \ line -> Failed $ "Línea "++(show line)++": Comentario no abierto"
@@ -132,22 +155,25 @@ lexer cont s = case s of
                     ('\\':cs)-> cont TAbs cs
                     ('.':cs) -> cont TDot cs
                     ('(':cs) -> cont TOpen cs
-                    ('-':('>':cs)) -> cont TArrow cs
                     (')':cs) -> cont TClose cs
-                    ('[':cs) -> cont TOpenB cs                    -- añadido
-                    (']':cs) -> cont TCloseB cs                   -- añadido
-                    (',':cs) -> cont TComma cs                    -- añadido
+                    ('[':cs) -> cont TOpenB cs
+                    (']':cs) -> cont TCloseB cs
+                    (',':cs) -> cont TComma cs
                     (':':cs) -> cont TColon cs
                     ('=':cs) -> cont TEquals cs
                     unknown -> \line -> Failed $ 
                      "Línea "++(show line)++": No se puede reconocer "++(show $ take 10 unknown)++ "..."
                     where lexVar cs = case span isAlpha cs of
+                              ("R",rest)    -> cont TR rest
                               ("E",rest)    -> cont TTypeE rest
                               ("def",rest)  -> cont TDef rest
                               ("let",rest)  -> cont TLet rest
                               ("in",rest)   -> cont TIn rest
+                              ("suc",rest)  -> cont TSuc rest
+                              ("nil",rest)  -> cont TNil rest
+                              ("cons",rest) -> cont TCons rest
                               (var,rest)    -> cont (TVar var) rest
-                          lexNum cs = case span isDigit cs of           -- añadido
+                          lexNum cs = case span isDigit cs of
                               (num,rest) -> cont (TNum num) rest
                           consumirBK anidado cl cont s = case s of
                               ('-':('-':cs)) -> consumirBK anidado cl cont $ dropWhile ((/=) '\n') cs
@@ -158,7 +184,6 @@ lexer cont s = case s of
                               ('\n':cs) -> consumirBK anidado (cl+1) cont cs
                               (_:cs) -> consumirBK anidado cl cont cs     
 
--- Construcción de números y listas como LamTerm (números naturales con Zero/Suc)
 makeNumTerm :: Int -> LamTerm
 makeNumTerm 0 = LZero
 makeNumTerm n | n > 0 = LSuc (makeNumTerm (n-1))

@@ -1,3 +1,120 @@
 def I = \x:E. x
 def K = \x:E.\y:E.x
 def S = \x:E->E->E.\y:E->E.\z:E.(x z) (y z)
+
+-- Combinadores Logicos (Tipos Booleanos sobre E)
+
+-- Tipo Bool abreviado: E -> E -> E
+
+-- True: Devuelve el primer argumento
+def bTrue = \x:E. \y:E. x
+
+-- False: Devuelve el segundo argumento
+def bFalse = \x:E. \y:E. y
+
+-- Not: Invierte el valor booleano
+-- Tipo: (E -> E -> E) -> E -> E -> E
+def bNot = \b:E->E->E. \x:E. \y:E. b y x
+
+-- And: Si p es false devuelve p (false), sino evalúa q
+def bAnd = \p:E->E->E. \q:E->E->E. p q p
+
+-- Or: Si p es true devuelve p (true), sino evalúa q
+def bOr = \p:E->E->E. \q:E->E->E. p p q
+
+-- If-Then-Else (es básicamente la aplicación del booleano)
+-- if cond then t else f
+def bIf = \cond:E->E->E. \t:E. \f:E. cond t f
+
+
+
+
+-- Combinadores de Funciones
+
+-- Apply: Aplica una función a un argumento ($ en Haskell)
+def apply = \f:E->E. \x:E. f x
+
+-- Flip: Invierte el orden de los dos primeros argumentos (C)
+def flip = \f:E->E->E. \y:E. \x:E. f x y
+
+-- Compose: Composición de funciones (B o (.))
+def compose = \f:E->E. \g:E->E. \x:E. f (g x)
+
+-- Twice: Aplica la función f dos veces
+def twice = \f:E->E. \x:E. f (f x)
+
+-- Dup: Duplica el argumento y se lo pasa a f (W)
+-- Útil para cosas como elevar al cuadrado: mul x x
+def dup = \f:E->E->E. \x:E. f x x
+
+-- Const: Devuelve siempre el primer valor ignorando el segundo
+def const = \x:E. \y:E. x
+
+-- Thrush: Toma un valor y luego una función, y aplica la función al valor (T)
+-- Es como un 'pipe' inverso: x |> f
+def thrush = \x:E. \f:E->E. f x
+
+
+
+-- Numeros Naturales y Aritmetica
+
+-- Constantes numéricas básicas
+def n1 = suc 0
+def n2 = suc (suc 0)
+def n3 = suc (suc (suc 0))
+def n4 = suc (suc (suc (suc 0)))
+def n5 = suc n4
+
+-- Identidad para Naturales
+def idNat = \x:Nat. x
+
+-- Predecesor (pred):
+-- pred 0 = 0
+-- pred (suc n) = n
+-- El paso recibe el n anterior, que es justamente lo que queremos devolver.
+def pred = \n:Nat. R 0 (\prev:Nat. \res:Nat. prev) n
+
+-- Es Cero (isZero):
+-- Devuelve bTrue si es 0, bFalse si no.
+-- Base: bTrue
+-- Paso: \n \rec -> bFalse (si llegamos al paso recursivo, no era 0)
+def isZero = \n:Nat. R bTrue (\p:Nat. \r:E->E->E. bFalse) n
+
+-- Suma (add): x + y
+-- Recurrimos sobre y.
+-- Base (y=0): x
+-- Paso: suc (resultado_rec)
+def add = \x:Nat. \y:Nat. R x (\p:Nat. \r:Nat. suc r) y
+
+-- Multiplicacion (mult): x * y
+-- Recurrimos sobre y.
+-- Base (y=0): 0
+-- Paso: x + resultado_rec (usamos la def de add anterior o doble recursion)
+-- (R r (\pp:Nat. \rr:Nat. suc rr) x) es (r + x)
+def mult = \x:Nat. \y:Nat. R 0 (\p:Nat. \r:Nat. R r (\pp:Nat. \rr:Nat. suc rr) x) y
+
+-- Potencia (pow): x ^ y
+-- Recurrimos sobre el exponente y.
+-- Base (y=0): 1 (suc 0)
+-- Paso: x * resultado_rec
+def pow = \x:Nat. \y:Nat. R (suc 0) (\p:Nat. \r:Nat. mult x r) y
+
+
+
+-- Tests complejos
+
+-- Test: 2 + 3
+def testSuma = add n2 n3
+
+-- Test: 2 * 3
+def testMult = mult n2 n3
+
+-- Test: (suc 0) es cero? -> Debe dar bFalse
+def testIsZero = isZero n1
+
+-- Test: 0 es cero? -> Debe dar bTrue
+def testIsZero2 = isZero 0
+
+-- Test Factorial pequeño (implementado ad-hoc para 3)
+-- fac 3 = mult 3 (mult 2 (mult 1 1))
+def fac3 = mult n3 (mult n2 n1)
