@@ -53,7 +53,17 @@ pp ii vs (Rec t1 t2 t3) =
       , nest 1 (pp ii vs t2)
       , nest 1 (pp ii vs t3)
       ]
-
+pp ii vs Nil = text "[]"
+pp ii vs (Cons t1 t2) =
+  case termToListInts (Cons t1 t2) of
+    Just xs ->
+      brackets (hcat (punctuate (text ",") (map (text . show) xs)))
+    Nothing ->
+      sep
+        [ text "cons "
+            <> parens (pp ii vs t1)
+        , parens (pp ii vs t2)
+        ]
 
 isLam :: Term -> Bool
 isLam (Lam _ _) = True
@@ -88,4 +98,19 @@ fv (Let t u         ) = fv t ++ fv u
 ---
 printTerm :: Term -> Doc
 printTerm t = pp 0 (filter (\v -> not $ elem v (fv t)) vars) t
+
+-- Convierte un Term numeral (Zero / Suc ...) a Maybe Int
+termToInt :: Term -> Maybe Int
+termToInt Zero     = Just 0
+termToInt (Suc t)  = fmap (+ 1) (termToInt t)
+termToInt _        = Nothing
+
+-- Convierte una lista construida con Cons/ Nil donde cada cabeza es numeral a Maybe [Int]
+termToListInts :: Term -> Maybe [Int]
+termToListInts Nil = Just []
+termToListInts (Cons h t) = do
+  n  <- termToInt h
+  ns <- termToListInts t
+  return (n : ns)
+termToListInts _ = Nothing
 

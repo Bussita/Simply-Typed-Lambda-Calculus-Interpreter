@@ -35,6 +35,8 @@ conversionAux xs (LLet s t1 t) = Let (conversionAux xs t1) (conversionAux (s:xs)
 conversionAux xs (LZero) = Zero
 conversionAux xs (LSuc t) = Suc $ conversionAux xs t
 conversionAux xs (LRec t1 t2 t3) = Rec (conversionAux xs t1) (conversionAux xs t2) (conversionAux xs t3)
+conversionAux xs (LNil) = Nil 
+conversionAux xs (LCons t u) = Cons (conversionAux xs t) (conversionAux xs u)
 
 isBound :: String -> [String] -> Int -> Maybe Int
 isBound var (v:vs) i = if var == v then Just i else isBound var vs (i+1)
@@ -56,6 +58,8 @@ quote :: Value -> Term
 quote (VLam t f) = Lam t f
 quote (VNum NZero) = Zero
 quote (VNum (NSuc n)) = Suc (quote (VNum n))
+quote (VList VNil) = Nil
+quote (VList (VCons n xs)) = Cons (quote (VNum n)) (quote (VList xs))
 
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
@@ -80,6 +84,13 @@ eval env (t1 :@: t2) =
 eval env (Rec t1 t2 t3) = case eval env t3 of
                             VNum NZero -> eval env t1
                             VNum (NSuc n) -> eval env (t2 :@: (Rec t1 t2 (quote (VNum n))) :@: (quote (VNum n)))
+
+eval env (RL t1 t2 Nil) = eval env t1 
+eval env (RL t1 t2 (Cons n xs)) = eval env (t2 :@: n :@: xs :@: (RL t1 t2 xs))
+eval env (RL t1 t2 t3) = let t3' = eval env t3 in eval env (RL t1 t2 t3')
+eval env (Cons t1 t2) = let t1' = eval env t1 in eval env (Cons t1' t2)
+eval env (Cons t1 t2) = let t2' = eval env t1 in eval env (Cons t1 t2')
+
 ----------------------
 --- type checker
 -----------------------
@@ -139,5 +150,19 @@ infer' c e (Rec t1 t2 t3) = do
                                 if type2 == FunT type1 (FunT NatT type1)
                                   then ret type1 else matchError (FunT type1 (FunT NatT type1)) type2
                                 else matchError NatT type3
-
+infer' c e Nil = ListT 
+infer' c e (Cons t1 t2) = let 
+  type1 = infer' c e t1
+  type2 = infer' c e t2 
+  in if (type1 == NatT) then (if (type2 == ListT) then ret ListT 
+                                                  else matchError ListT type2) 
+                        else matchError NatT type1 
+infer' c e (RL t1 t2 t3) = let 
+  type1 = infer' c e t1 
+  type2 = infer' c e t2 
+  type3 = infer' c e t3 
+  in if (type2 == FunT NatT (FunT ListT (FunT type1 type 1))) then 
+                                                                if (type3 == ListT) then ret type1 
+                                                                                    else matchError ListT type3 
+                                                              else matchError FunT NatT (FunT ListT (FunT type1 type 1)) type2
 

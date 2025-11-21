@@ -54,6 +54,7 @@ module Common where
              -- listas
              | Nil
              | Cons Term Term
+             | RL Term Term Term 
           deriving (Show, Eq)
 
   -- Valores
