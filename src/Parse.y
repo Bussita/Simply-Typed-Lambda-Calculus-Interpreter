@@ -21,8 +21,12 @@ import Data.Char
     '.'     { TDot }
     '('     { TOpen }
     ')'     { TClose }
+    '['     { TOpenB }
+    ']'     { TCloseB }
+    ','     { TComma }        -- añadido
     '->'    { TArrow }
     VAR     { TVar $$ }
+    NUM     { TNum $$ }       -- añadido
     TYPEE   { TTypeE }
     DEF     { TDef }
     LET     { TLet }
@@ -51,6 +55,12 @@ Atom    :: { LamTerm }
         : VAR                          { LVar $1 }  
         | '(' Exp ')'                  { $2 }
         | LET VAR '=' Exp IN Exp      { LLet $2 $4 $6 }
+        | '[' ']'                      { LNil }                      -- lista vacía
+        | '[' Ints ']'                 { makeListFromInts $2 }      -- lista de enteros
+
+Ints    :: { [Int] }
+        : NUM                          { [ read $1 ] }
+        | NUM ',' Ints                 { read $1 : $3 }
 
 Type    : TYPEE                        { EmptyT }
         | Type '->' Type               { FunT $1 $3 }
@@ -101,6 +111,10 @@ data Token = TVar String
                | TLet
                | TIn
                | TEOF
+               | TOpenB
+               | TCloseB
+               | TComma      -- añadido
+               | TNum String -- añadido
                deriving Show
 
 ----------------------------------
@@ -110,6 +124,7 @@ lexer cont s = case s of
                     (c:cs)
                           | isSpace c -> lexer cont cs
                           | isAlpha c -> lexVar (c:cs)
+                          | isDigit c -> lexNum (c:cs)               -- añadido
                     ('-':('-':cs)) -> lexer cont $ dropWhile ((/=) '\n') cs
                     ('{':('-':cs)) -> consumirBK 0 0 cont cs	
                     ('-':('}':cs)) -> \ line -> Failed $ "Línea "++(show line)++": Comentario no abierto"
@@ -119,6 +134,9 @@ lexer cont s = case s of
                     ('(':cs) -> cont TOpen cs
                     ('-':('>':cs)) -> cont TArrow cs
                     (')':cs) -> cont TClose cs
+                    ('[':cs) -> cont TOpenB cs                    -- añadido
+                    (']':cs) -> cont TCloseB cs                   -- añadido
+                    (',':cs) -> cont TComma cs                    -- añadido
                     (':':cs) -> cont TColon cs
                     ('=':cs) -> cont TEquals cs
                     unknown -> \line -> Failed $ 
@@ -129,6 +147,8 @@ lexer cont s = case s of
                               ("let",rest)  -> cont TLet rest
                               ("in",rest)   -> cont TIn rest
                               (var,rest)    -> cont (TVar var) rest
+                          lexNum cs = case span isDigit cs of           -- añadido
+                              (num,rest) -> cont (TNum num) rest
                           consumirBK anidado cl cont s = case s of
                               ('-':('-':cs)) -> consumirBK anidado cl cont $ dropWhile ((/=) '\n') cs
                               ('{':('-':cs)) -> consumirBK (anidado+1) cl cont cs	
@@ -137,6 +157,16 @@ lexer cont s = case s of
                                                   _ -> consumirBK (anidado-1) cl cont cs
                               ('\n':cs) -> consumirBK anidado (cl+1) cont cs
                               (_:cs) -> consumirBK anidado cl cont cs     
+
+-- Construcción de números y listas como LamTerm (números naturales con Zero/Suc)
+makeNumTerm :: Int -> LamTerm
+makeNumTerm 0 = LZero
+makeNumTerm n | n > 0 = LSuc (makeNumTerm (n-1))
+makeNumTerm _ = LZero
+
+makeListFromInts :: [Int] -> LamTerm
+makeListFromInts [] = LNil
+makeListFromInts (x:xs) = LCons (makeNumTerm x) (makeListFromInts xs)
                                            
 stmts_parse s = parseStmts s 1
 stmt_parse s = parseStmt s 1

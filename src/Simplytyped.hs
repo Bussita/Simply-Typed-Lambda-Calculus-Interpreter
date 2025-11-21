@@ -67,7 +67,8 @@ eval :: NameEnv Value Type -> Term -> Value
 eval env (Free x) =
   case lookup x env of
     Just (v, _) -> v
-    Nothing -> notfoundError x
+    Nothing -> error "eval linea 70"
+-- TODO: arreglar esta linea para que ande con la funcion de error.
 
 eval env (Lam t body) =
   VLam t body
@@ -87,9 +88,9 @@ eval env (Rec t1 t2 t3) = case eval env t3 of
 
 eval env (RL t1 t2 Nil) = eval env t1 
 eval env (RL t1 t2 (Cons n xs)) = eval env (t2 :@: n :@: xs :@: (RL t1 t2 xs))
-eval env (RL t1 t2 t3) = let t3' = eval env t3 in eval env (RL t1 t2 t3')
-eval env (Cons t1 t2) = let t1' = eval env t1 in eval env (Cons t1' t2)
-eval env (Cons t1 t2) = let t2' = eval env t1 in eval env (Cons t1 t2')
+eval env (RL t1 t2 t3) = let t3' = eval env t3 in eval env (RL t1 t2 (quote t3'))
+eval env (Cons t1 t2) = let t1' = eval env t1 in eval env (Cons (quote t1') t2)
+eval env (Cons t1 t2) = let t2' = eval env t1 in eval env (Cons t1 (quote t2'))
 
 ----------------------
 --- type checker
@@ -139,9 +140,11 @@ infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
 infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
 infer' c e (Let t1 t) = infer' c e t1 >>= \tt1 -> infer' (tt1 : c) e t >>= \tt -> ret tt
 infer' c e Zero = ret NatT
-infer' c e (Suc t) = case infer' c e t of
-                      NatT -> ret NatT
-                      tt  -> matchError NatT tt
+infer' c e (Suc t) = do
+  tt <- infer' c e t
+  if tt == NatT
+    then ret NatT
+    else matchError NatT tt
 infer' c e (Rec t1 t2 t3) = do
                               type1 <- infer' c e t1
                               type2 <- infer' c e t2
@@ -150,19 +153,23 @@ infer' c e (Rec t1 t2 t3) = do
                                 if type2 == FunT type1 (FunT NatT type1)
                                   then ret type1 else matchError (FunT type1 (FunT NatT type1)) type2
                                 else matchError NatT type3
-infer' c e Nil = ListT 
-infer' c e (Cons t1 t2) = let 
-  type1 = infer' c e t1
-  type2 = infer' c e t2 
-  in if (type1 == NatT) then (if (type2 == ListT) then ret ListT 
-                                                  else matchError ListT type2) 
-                        else matchError NatT type1 
-infer' c e (RL t1 t2 t3) = let 
-  type1 = infer' c e t1 
-  type2 = infer' c e t2 
-  type3 = infer' c e t3 
-  in if (type2 == FunT NatT (FunT ListT (FunT type1 type 1))) then 
-                                                                if (type3 == ListT) then ret type1 
-                                                                                    else matchError ListT type3 
-                                                              else matchError FunT NatT (FunT ListT (FunT type1 type 1)) type2
+infer' c e Nil = ret ListT 
+infer' c e (Cons t1 t2) = do
+  type1 <- infer' c e t1
+  type2 <- infer' c e t2
+  if type1 == NatT
+    then if type2 == ListT
+           then ret ListT
+           else matchError ListT type2
+    else matchError NatT type1
 
+infer' c e (RL t1 t2 t3) = do
+  type1 <- infer' c e t1
+  type2 <- infer' c e t2
+  type3 <- infer' c e t3
+  let expected = FunT NatT (FunT ListT (FunT type1 type1))
+  if type2 == expected
+    then if type3 == ListT
+           then ret type1
+           else matchError ListT type3
+    else matchError expected type2
