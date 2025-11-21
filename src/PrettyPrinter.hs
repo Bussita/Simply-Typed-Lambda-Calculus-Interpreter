@@ -80,6 +80,8 @@ isApp _         = False
 -- pretty-printer de tipos
 printType :: Type -> Doc
 printType EmptyT = text "E"
+printType NatT = text "Nat"
+printType ListT = text "List"
 printType (FunT t1 t2) =
   sep [parensIf (isFun t1) (printType t1), text "->", printType t2]
 
@@ -94,6 +96,12 @@ fv (Free  (Global n)) = [n]
 fv (t   :@: u       ) = fv t ++ fv u
 fv (Lam _   u       ) = fv u
 fv (Let t u         ) = fv t ++ fv u
+fv Zero               = []
+fv (Suc t           ) = fv t
+fv (Rec t1 t2 t3    ) = fv t1 ++ fv t2 ++ fv t3
+fv Nil                = []
+fv (Cons t1 t2      ) = fv t1 ++ fv t2
+fv (RL t1 t2 t3     ) = fv t1 ++ fv t2 ++ fv t3
 
 ---
 printTerm :: Term -> Doc
@@ -113,4 +121,3 @@ termToListInts (Cons h t) = do
   ns <- termToListInts t
   return (n : ns)
 termToListInts _ = Nothing
-

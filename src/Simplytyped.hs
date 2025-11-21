@@ -52,6 +52,13 @@ sub _ _ (Bound j) | otherwise = Bound j
 sub _ _ (Free n   )           = Free n
 sub i t (u   :@: v)           = sub i t u :@: sub i t v
 sub i t (Lam t'  u)           = Lam t' (sub (i + 1) t u)
+sub i t (Let u v)             = Let (sub i t u) (sub (i + 1) t v)
+sub i t Zero                  = Zero
+sub i t (Suc u)               = Suc (sub i t u)
+sub i t (Rec u v w)           = Rec (sub i t u) (sub i t v) (sub i t w)
+sub i t Nil                   = Nil
+sub i t (Cons u v)            = Cons (sub i t u) (sub i t v)
+sub i t (RL u v w)            = RL (sub i t u) (sub i t v) (sub i t w)
 
 -- convierte un valor en el término equivalente
 quote :: Value -> Term
@@ -64,17 +71,21 @@ quote (VList (VCons n xs)) = Cons (quote (VNum n)) (quote (VList xs))
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
 
+-- Variables
 eval env (Free x) =
   case lookup x env of
     Just (v, _) -> v
-    Nothing -> error "eval linea 70"
--- TODO: arreglar esta linea para que ande con la funcion de error.
+    Nothing -> error $ "Variable " ++ show x ++ " no definida"
 
-eval env (Lam t body) =
-  VLam t body
+-- Abstracción (ya es un valor)
+eval env (Lam t body) = VLam t body
 
-eval env (Let t1 t2) = let v = eval env t1 in eval env (sub 0 (quote v) t2)
+-- Let binding (E-Let y E-LetV)
+eval env (Let t1 t2) = 
+  let v = eval env t1 
+  in eval env (sub 0 (quote v) t2)
 
+-- Aplicación (E-App1, E-App2, E-AppAbs)
 eval env (t1 :@: t2) =
   case eval env t1 of
     VLam _ body ->
@@ -82,15 +93,36 @@ eval env (t1 :@: t2) =
       in eval env (sub 0 (quote v2) body)
     _ -> error "Aplicación a un no-lambda"
 
-eval env (Rec t1 t2 t3) = case eval env t3 of
-                            VNum NZero -> eval env t1
-                            VNum (NSuc n) -> eval env (t2 :@: (Rec t1 t2 (quote (VNum n))) :@: (quote (VNum n)))
+eval env Zero = VNum NZero
 
-eval env (RL t1 t2 Nil) = eval env t1 
-eval env (RL t1 t2 (Cons n xs)) = eval env (t2 :@: n :@: xs :@: (RL t1 t2 xs))
-eval env (RL t1 t2 t3) = let t3' = eval env t3 in eval env (RL t1 t2 (quote t3'))
-eval env (Cons t1 t2) = let t1' = eval env t1 in eval env (Cons (quote t1') t2)
-eval env (Cons t1 t2) = let t2' = eval env t1 in eval env (Cons t1 (quote t2'))
+eval env (Suc t) = 
+  case eval env t of
+    VNum n -> VNum (NSuc n)
+    _ -> error "suc aplicado a un no-natural"
+
+eval env (Rec t1 t2 t3) = 
+  case eval env t3 of
+    VNum NZero -> eval env t1
+    VNum (NSuc n) -> 
+      let rec_val = eval env (Rec t1 t2 (quote (VNum n)))
+      in eval env (t2 :@: quote rec_val :@: quote (VNum n))
+    _ -> error "R aplicado a un no-natural"
+
+eval env Nil = VList VNil
+
+eval env (Cons t1 t2) = 
+  case (eval env t1, eval env t2) of
+    (VNum n, VList xs) -> VList (VCons n xs)
+    (VNum _, _) -> error "cons: segundo argumento debe ser una lista"
+    (_, _) -> error "cons: primer argumento debe ser un natural"
+
+eval env (RL t1 t2 t3) = 
+  case eval env t3 of
+    VList VNil -> eval env t1
+    VList (VCons n xs) -> 
+      let rec_val = eval env (RL t1 t2 (quote (VList xs)))
+      in eval env (t2 :@: quote (VNum n) :@: quote (VList xs) :@: quote rec_val)
+    _ -> error "RL aplicado a una no-lista"
 
 ----------------------
 --- type checker

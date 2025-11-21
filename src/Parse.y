@@ -27,6 +27,7 @@ import Data.Char
     VAR     { TVar $$ }
     NUM     { TNum $$ }
     TYPEE   { TTypeE }
+    TYPENAT { TTypeNat }
     DEF     { TDef }
     LET     { TLet }
     IN      { TIn }
@@ -82,6 +83,7 @@ Ints    :: { [Int] }
         | NUM ',' Ints                 { read $1 : $3 }
 
 Type    : TYPEE                        { EmptyT }
+        | TYPENAT                      { NatT }
         | Type '->' Type               { FunT $1 $3 }
         | '(' Type ')'                 { $2 }
 
@@ -134,6 +136,7 @@ data Token = TVar String
                | TCloseB
                | TComma
                | TNum String
+               | TTypeNat
                | TR
                | TSuc
                | TNil
@@ -166,6 +169,7 @@ lexer cont s = case s of
                     where lexVar cs = case span isAlpha cs of
                               ("R",rest)    -> cont TR rest
                               ("E",rest)    -> cont TTypeE rest
+                              ("Nat",rest)  -> cont TTypeNat rest
                               ("def",rest)  -> cont TDef rest
                               ("let",rest)  -> cont TLet rest
                               ("in",rest)   -> cont TIn rest
