@@ -21,6 +21,9 @@ import Common (LamTerm(LVar, LAbs))
 -- conversion
 -----------------------
 
+-- TODO: Cambiar el tipo List Nat por ListN o similar
+--  
+
 -- conversion a términos localmente sin nombres
 conversion :: LamTerm -> Term
 conversion = conversionAux []
@@ -37,10 +40,12 @@ conversionAux xs (LSuc t) = Suc $ conversionAux xs t
 conversionAux xs (LRec t1 t2 t3) = Rec (conversionAux xs t1) (conversionAux xs t2) (conversionAux xs t3)
 conversionAux xs (LNil) = Nil 
 conversionAux xs (LCons t u) = Cons (conversionAux xs t) (conversionAux xs u)
+conversionAux xs (LRecL a b c) = RecL (conversionAux xs a) (conversionAux xs b) (conversionAux xs c)
 
 isBound :: String -> [String] -> Int -> Maybe Int
 isBound var (v:vs) i = if var == v then Just i else isBound var vs (i+1)
 isBound var [] _ = Nothing
+
 ----------------------------
 --- evaluador de términos
 ----------------------------
@@ -58,72 +63,61 @@ sub i t (Suc u)               = Suc (sub i t u)
 sub i t (Rec u v w)           = Rec (sub i t u) (sub i t v) (sub i t w)
 sub i t Nil                   = Nil
 sub i t (Cons u v)            = Cons (sub i t u) (sub i t v)
-sub i t (RL u v w)            = RL (sub i t u) (sub i t v) (sub i t w)
+sub i t (RecL t1 t2 t3)       = RecL (sub i t t1) (sub i t t2) (sub i t t3)
 
 -- convierte un valor en el término equivalente
 quote :: Value -> Term
 quote (VLam t f) = Lam t f
-quote (VNum NZero) = Zero
-quote (VNum (NSuc n)) = Suc (quote (VNum n))
-quote (VList VNil) = Nil
-quote (VList (VCons n xs)) = Cons (quote (VNum n)) (quote (VList xs))
+quote (VNum nv)  = quoteN nv
+quote (VList lv) = quoteL lv
+
+quoteN :: NumVal -> Term
+quoteN NZero     = Zero
+quoteN (NSuc nv) = Suc $ quoteN nv
+
+quoteL :: ListVal -> Term
+quoteL VNil          = Nil
+quoteL (VCons nv lv) = Cons (quoteN nv) (quoteL lv) 
 
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
+eval _ (Bound j)        = error "error: evaluating bounded variable"
+eval ne (Free x)        = case Prelude.lookup x ne of
+                            Nothing     -> error "error: variable not in name enviroment"
+                            Just (v, t) -> v 
 
--- Variables
-eval env (Free x) =
-  case lookup x env of
-    Just (v, _) -> v
-    Nothing -> error $ "Variable " ++ show x ++ " no definida"
+eval _ (Lam t f  )      = VLam t f
 
--- Abstracción (ya es un valor)
-eval env (Lam t body) = VLam t body
+eval ne (t1 :@: t2)     = let
+                            (Lam t f) = quote (eval ne t1)
+                            t2'       = quote (eval ne t2)
+                            tsub      = sub 0 t2' f 
+                          in eval ne tsub
 
--- Let binding (E-Let y E-LetV)
-eval env (Let t1 t2) = 
-  let v = eval env t1 
-  in eval env (sub 0 (quote v) t2)
+eval ne (Let t1 t2)     = let
+                            t1'  = quote (eval ne t1)
+                            tsub = sub 0 t1' t2
+                          in
+                            eval ne tsub
 
--- Aplicación (E-App1, E-App2, E-AppAbs)
-eval env (t1 :@: t2) =
-  case eval env t1 of
-    VLam _ body ->
-      let v2 = eval env t2
-      in eval env (sub 0 (quote v2) body)
-    _ -> error "Aplicación a un no-lambda"
+eval _ Zero             = VNum NZero
+eval ne (Suc t)         = VNum (NSuc n) where (VNum n) = eval ne t
+eval ne (Rec t1 t2 t3)  = case eval ne t3 of
+                            VNum NZero     -> eval ne t1
+                            VNum (NSuc nv) -> eval ne (t2 :@: Rec t1 t2 t :@: t) 
+                                              where t = quoteN nv
 
-eval env Zero = VNum NZero
+eval _ Nil              = VList VNil
+eval ne (Cons t1 t2)    = let
+                            (VNum n)   = eval ne t1
+                            (VList lv) = eval ne t2
+                          in VList (VCons n lv)
 
-eval env (Suc t) = 
-  case eval env t of
-    VNum n -> VNum (NSuc n)
-    _ -> error "suc aplicado a un no-natural"
-
-eval env (Rec t1 t2 t3) = 
-  case eval env t3 of
-    VNum NZero -> eval env t1
-    VNum (NSuc n) -> 
-      let rec_val = eval env (Rec t1 t2 (quote (VNum n)))
-      in eval env (t2 :@: quote rec_val :@: quote (VNum n))
-    _ -> error "R aplicado a un no-natural"
-
-eval env Nil = VList VNil
-
-eval env (Cons t1 t2) = 
-  case (eval env t1, eval env t2) of
-    (VNum n, VList xs) -> VList (VCons n xs)
-    (VNum _, _) -> error "cons: segundo argumento debe ser una lista"
-    (_, _) -> error "cons: primer argumento debe ser un natural"
-
-eval env (RL t1 t2 t3) = 
-  case eval env t3 of
-    VList VNil -> eval env t1
-    VList (VCons n xs) -> 
-      let rec_val = eval env (RL t1 t2 (quote (VList xs)))
-      in eval env (t2 :@: quote (VNum n) :@: quote (VList xs) :@: quote rec_val)
-    _ -> error "RL aplicado a una no-lista"
-
+eval ne (RecL t1 t2 t3) = case eval ne t3 of
+                             VList VNil          -> eval ne t1
+                             VList (VCons nv lv) -> eval ne (t2 :@: tn :@: tl :@: RecL t1 t2 tl)
+                                                    where tn = quoteN nv
+                                                          tl = quoteL lv
 ----------------------
 --- type checker
 -----------------------
@@ -156,52 +150,73 @@ matchError t1 t2 =
 notfunError :: Type -> Either String Type
 notfunError t1 = err $ render (printType t1) ++ " no puede ser aplicado."
 
+notKArgError :: Type -> Int -> Either String Type
+notKArgError t1 k = err $ render (printType t1) ++ " no puede ser aplicado " ++ show k ++ " veces."
+
 notfoundError :: Name -> Either String Type
 notfoundError n = err $ show n ++ " no está definida."
 
--- infiere el tipo de un término a partir de un entorno local de variables y un entorno global
 infer' :: Context -> NameEnv Value Type -> Term -> Either String Type
-infer' c _ (Bound i) = ret (c !! i)
-infer' _ e (Free  n) = case lookup n e of
-  Nothing     -> notfoundError n
-  Just (_, t) -> ret t
-infer' c e (t :@: u) = infer' c e t >>= \tt -> infer' c e u >>= \tu ->
-  case tt of
-    FunT t1 t2 -> if (tu == t1) then ret t2 else matchError t1 tu
-    _          -> notfunError tt
-infer' c e (Lam t u) = infer' (t : c) e u >>= \tu -> ret $ FunT t tu
-infer' c e (Let t1 t) = infer' c e t1 >>= \tt1 -> infer' (tt1 : c) e t >>= \tt -> ret tt
-infer' c e Zero = ret NatT
-infer' c e (Suc t) = do
-  tt <- infer' c e t
-  if tt == NatT
-    then ret NatT
-    else matchError NatT tt
-infer' c e (Rec t1 t2 t3) = do
-                              type1 <- infer' c e t1
-                              type2 <- infer' c e t2
-                              type3 <- infer' c e t3
-                              if type3 == NatT then 
-                                if type2 == FunT type1 (FunT NatT type1)
-                                  then ret type1 else matchError (FunT type1 (FunT NatT type1)) type2
-                                else matchError NatT type3
-infer' c e Nil = ret ListT 
-infer' c e (Cons t1 t2) = do
-  type1 <- infer' c e t1
-  type2 <- infer' c e t2
-  if type1 == NatT
-    then if type2 == ListT
-           then ret ListT
-           else matchError ListT type2
-    else matchError NatT type1
+infer' c _ (Bound i)        = ret (c !! i)
+infer' _ e (Free  n)        = case Prelude.lookup n e of 
+                                Nothing     -> notfoundError n
+                                Just (_, t) -> ret t
+ 
+infer' c e (t :@: u)        = infer' c e t >>= \tt ->
+                              infer' c e u >>= \tu ->
+                              case tt of
+                                FunT t1 t2 -> if (tu == t1)
+                                              then ret t2
+                                              else matchError t1 tu
+                                _          -> notfunError tt
 
-infer' c e (RL t1 t2 t3) = do
-  type1 <- infer' c e t1
-  type2 <- infer' c e t2
-  type3 <- infer' c e t3
-  let expected = FunT NatT (FunT ListT (FunT type1 type1))
-  if type2 == expected
-    then if type3 == ListT
-           then ret type1
-           else matchError ListT type3
-    else matchError expected type2
+infer' c e (Lam t u)        = infer' (t : c) e u >>= \tu ->
+                              ret $ FunT t tu
+
+infer' c e (Let t1 t2)      = infer' c e t1 >>= \tt1 ->
+                              infer' (tt1 : c) e t2  >>= \tt2 ->
+                              ret tt2
+
+infer' c e Zero             = ret NatT
+infer' c e (Suc t)          = infer' c e t >>= \tt ->
+                                case tt of 
+                                  NatT -> ret NatT
+                                  tt   -> matchError NatT tt
+
+infer' c e (Rec t1 t2 t3)   = infer' c e t1 >>= \tt1 ->
+                              infer' c e t2 >>= \tt2 ->
+                              infer' c e t3 >>= \tt3 ->
+                              if (tt3 /= NatT)  then matchError NatT tt3  
+                                                else case tt2 of 
+                                                  (FunT  x (FunT y z)) -> if (x == tt1 && y == NatT && z == tt1)
+                                                                          then ret tt1
+                                                                          else matchError t tt2     
+                                                                          where t = (FunT tt1 (FunT NatT tt1))
+                                                  _                    -> notKArgError tt2 2
+
+infer' c e Nil              = ret ListT
+infer' c e (Cons t1 t2)     = infer' c e t1 >>= \tt1 ->
+                              infer' c e t2 >>= \tt2 ->
+                              case tt1 of 
+                                NatT -> if (tt2 == ListT)
+                                        then ret tt2
+                                        else matchError ListT tt2
+                                _    -> matchError NatT tt1 
+
+infer' c e (RecL t1 t2 t3)  = infer' c e t1 >>= \tt1 ->
+                              infer' c e t2 >>= \tt2 ->
+                              infer' c e t3 >>= \tt3 -> 
+                              if    (tt3 /= ListT)
+                              then  matchError ListT tt3
+                              else  case tt2 of
+                                      (FunT x (FunT y (FunT z r)))  ->  if match
+                                                                        then ret tt1
+                                                                        else matchError t tt2
+                                                                        where match = (x == NatT)  &&
+                                                                                      (y == ListT) &&
+                                                                                      (z == tt1)   &&
+                                                                                      (r == tt1)
+                                                                              t     = FunT NatT
+                                                                                           (FunT ListT (FunT tt1 tt1))
+
+                                      _                             ->  notKArgError tt2 3

@@ -1,0 +1,18 @@
+/home/valentinsosa/.stack/programs/x86_64-linux/ghc-tinfo6-8.8.3/lib/ghc-8.8.3/include/ghcversion.h:
+  hash: 40d1b759f485f1cd5a54141a6412691ac2b76930507289a16a6a7b89b045b4d2
+? /home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/.stack-work/dist/x86_64-linux-tinfo6/ghc-8.8.3/build/TP2-exe/autogen/Paths_TP2.hs
+: hash: 0f8a65ba464d27024fa8c33a00c29ae89e6d2134a0ead54d5e140b9954b35b41
+? /home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/.stack-work/dist/x86_64-linux-tinfo6/ghc-8.8.3/build/TP2-exe/autogen/cabal_macros.h
+: hash: c6c618016b16ee3af31a0e42f6e4ee3b607912c26fb47846af821fb72d28276e
+/home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/ChangeLog.md:
+  hash: b6db31e04d81c0e662bab2cbee2044b15c6a17422f0ed7b23ee85da5086cf956
+/home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/README.md:
+  hash: 7a6d5cb38ef1bd8af98a911f831eb4352fabde8c1b3ac75ae436dba070996555
+/home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/TP2.cabal:
+  hash: 756c792633e84e955c6f5616174cc3df57148746e465c90280baec67951f8b8d
+/home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/app/Main.hs:
+  hash: 1880970b433f1104dc0189de307e0f0001bde157ea551b3ddeed5062fe501a4f
+/home/valentinsosa/Github/Simply-Typed-Lambda-Calculus-Interpreter/package.yaml:
+  hash: 3f5d9d8a2a57469ed5359f4daf48ab7a74a6eb0299ce2def67ad968547b7ac61
+/usr/include/stdc-predef.h:
+  hash: 82975831ea2d1f95b60225f37ddd6130225f0c3de2318674cb178fea661ad87b

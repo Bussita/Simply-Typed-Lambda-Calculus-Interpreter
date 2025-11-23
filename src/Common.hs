@@ -37,6 +37,7 @@ module Common where
                 -- listas
                 |  LNil
                 |  LCons LamTerm LamTerm
+                |  LRecL LamTerm LamTerm LamTerm
                 deriving (Show, Eq)
 
 
@@ -54,7 +55,7 @@ module Common where
              -- listas
              | Nil
              | Cons Term Term
-             | RL Term Term Term 
+             | RecL Term Term Term 
           deriving (Show, Eq)
 
   -- Valores
