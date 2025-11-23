@@ -25,9 +25,8 @@ parensIf False = id
 pp :: Int -> [String] -> Term -> Doc
 pp ii vs (Bound k         ) = text (vs !! (ii - k - 1))
 pp _  _  (Free  (Global s)) = text s
-
 pp ii vs (i :@: c         ) = sep
-  [ parensIf (isLam i) (pp ii vs i)
+  [ parensIf (isLam i || isLet i) (pp ii vs i)
   , nest 1 (parensIf (isLam c || isApp c) (pp ii vs c))
   ]
 pp ii vs (Lam t c) =
@@ -37,77 +36,53 @@ pp ii vs (Lam t c) =
     <> printType t
     <> text ". "
     <> pp (ii + 1) vs c
-
-pp ii vs (Let t1 t2) = 
-  text "let" 
-    <+> text (vs !! ii)
-    <+> text "="              
-    <+> pp ii vs t1
-    <+> text "in"
-    <+> pp (ii + 1) vs t2
-
-pp _ _   s@Zero    = text $ show (sucToNat s)
-pp ii vs s@(Suc t) = if printableNumber s then text $ show (sucToNat s)
-                                          else text "suc"
-                                                <+> parensIf (needParens t) (pp ii vs t)
-pp ii vs (Rec t1 t2 t3) = 
-  text "R" 
-    <+> parensIf (needParens t1) (pp ii vs t1)
-    <+> parensIf (needParens t2) (pp ii vs t2)
-    <+> parensIf (needParens t3) (pp ii vs t3)
-
-pp _ _ Nil            = text "nil"
-pp ii vs (Cons t1 t2) = 
-  text "cons" 
-    <+> parensIf (needParens t1) (pp ii vs t1)
-    <+> parensIf (needParens t2) (pp ii vs t2)
-pp ii vs (RecL t1 t2 t3) =
-  text "RL" 
-    <+> parensIf (needParens t1) (pp ii vs t1)
-    <+> parensIf (needParens t2) (pp ii vs t2)
-    <+> parensIf (needParens t3) (pp ii vs t3)
-
-
-isNat :: Term -> Bool 
-isNat Zero    = True
-isNat (Suc _) = True
-isNat _       = False
+pp ii vs (Let t u) =
+  sep
+    [ text "let "
+        <> text (vs !! ii)
+        <> text " = "
+        <> parens (pp ii vs t)
+    , text " in "
+        <> parens (pp (ii + 1) vs u)
+    ]
+pp ii vs Zero = text "0"
+pp ii vs (Suc t) = text "suc " <> parensIf (isApp t || isLam t || isLet t) (pp ii vs t)
+pp ii vs (Rec t1 t2 t3) =
+  sep [ text "R"
+      , nest 1 (pp ii vs t1)
+      , nest 1 (pp ii vs t2)
+      , nest 1 (pp ii vs t3)
+      ]
+pp ii vs Nil = text "[]"
+pp ii vs (Cons t1 t2) =
+  case termToListInts (Cons t1 t2) of
+    Just xs ->
+      brackets (hcat (punctuate (text ",") (map (text . show) xs)))
+    Nothing ->
+      sep
+        [ text "cons "
+            <> parens (pp ii vs t1)
+        , parens (pp ii vs t2)
+        ]
 
 isLam :: Term -> Bool
 isLam (Lam _ _) = True
 isLam _         = False
 
-isVar :: Term -> Bool
-isVar (Bound _) = True
-isVar (Free _)  = True
-isVar _         = False
-
-isNil :: Term -> Bool
-isNil Nil = True
-isNil _   = False
+isLet :: Term -> Bool
+isLet (Let _ _) = True
+isLet _         = False
 
 isApp :: Term -> Bool
 isApp (_ :@: _) = True
 isApp _         = False
 
-needParens :: Term -> Bool
-needParens t = not (isNat t || isNil t || isVar t)
-
-sucToNat :: Term -> Int
-sucToNat Zero    = 0
-sucToNat (Suc t) = sucToNat t + 1
-
-printableNumber :: Term -> Bool
-printableNumber Zero    = True
-printableNumber (Suc t) = printableNumber t
-printableNumber _       = False
-
 -- pretty-printer de tipos
 printType :: Type -> Doc
-printType EmptyT        = text "E"
-printType NatT          = text "Nat"
-printType ListT         = text "List Nat"
-printType (FunT t1 t2)  =
+printType EmptyT = text "E"
+printType NatT = text "Nat"
+printType ListT = text "ListN"
+printType (FunT t1 t2) =
   sep [parensIf (isFun t1) (printType t1), text "->", printType t2]
 
 
@@ -120,14 +95,29 @@ fv (Bound _         ) = []
 fv (Free  (Global n)) = [n]
 fv (t   :@: u       ) = fv t ++ fv u
 fv (Lam _   u       ) = fv u
-fv (Let t1 t2       ) = fv t1 ++ fv t2 
+fv (Let t u         ) = fv t ++ fv u
 fv Zero               = []
-fv (Suc t)            = fv t
-fv (Rec t1 t2 t3)     = fv t1 ++ fv t2 ++ fv t3
+fv (Suc t           ) = fv t
+fv (Rec t1 t2 t3    ) = fv t1 ++ fv t2 ++ fv t3
 fv Nil                = []
-fv (Cons t1 t2)       = fv t1 ++ fv t2
-fv (RecL t1 t2 t3)    = fv t1 ++ fv t2 ++ fv t3
+fv (Cons t1 t2      ) = fv t1 ++ fv t2
+fv (RL t1 t2 t3     ) = fv t1 ++ fv t2 ++ fv t3
 
 ---
 printTerm :: Term -> Doc
 printTerm t = pp 0 (filter (\v -> not $ elem v (fv t)) vars) t
+
+-- Convierte un Term numeral (Zero / Suc ...) a Maybe Int
+termToInt :: Term -> Maybe Int
+termToInt Zero     = Just 0
+termToInt (Suc t)  = fmap (+ 1) (termToInt t)
+termToInt _        = Nothing
+
+-- Convierte una lista construida con Cons/ Nil donde cada cabeza es numeral a Maybe [Int]
+termToListInts :: Term -> Maybe [Int]
+termToListInts Nil = Just []
+termToListInts (Cons h t) = do
+  n  <- termToInt h
+  ns <- termToListInts t
+  return (n : ns)
+termToListInts _ = Nothing
