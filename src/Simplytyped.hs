@@ -78,10 +78,10 @@ quoteList (VCons n xs) = Cons (quoteNat n) (quoteList xs)
 
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
-eval _ (Bound j)        = error "error: evaluating bounded variable"
+eval _ (Bound j)        = error "[ERROR] Evaluacion de variable ligada."
 eval env (Free x)       = case Prelude.lookup x env of
-                            Nothing     -> error "error: variable not in name enviroment"
                             Just (v, t) -> v 
+                            Nothing     -> error "[ERROR] Variable ausente en el entorno."
 
 eval _ (Lam t f  )      = VLam t f
 

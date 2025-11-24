@@ -1,1 +1,1 @@
-def Ack = \m:Nat.\n:Nat. 
+def Ack = \m : Nat . R (\x:Nat.suc x) (\f : Nat -> Nat . \x : Nat . \n : Nat . R (f (suc 0)) (\r : Nat . \i : Nat . f r) n ) m
