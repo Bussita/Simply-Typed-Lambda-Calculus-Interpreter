@@ -24,8 +24,8 @@ import Data.Char
     '->'    { TArrow }
     VAR     { TVar $$ }
     TYPEE   { TTypeE }
-    TYPEN   { TTypeN }
-    TYPEL   { TTypeL }
+    TYPENAT   { TTypeNat }
+    TYPELNAT   { TTypeLNat }
     DEF     { TDef }
     LET     { TLet }
     IN      { TIn }
@@ -71,8 +71,8 @@ Atom    :: { LamTerm }
         | NIL                          { LNil }
 
 Type    : TYPEE                        { EmptyT }
-        | TYPEN                        { NatT }
-        | TYPEL TYPEN                  { ListT }
+        | TYPENAT                      { NatT }
+        | TYPELNAT                     { ListT }
         | Type '->' Type               { FunT $1 $3 }
         | '(' Type ')'                 { $2 }
 
@@ -115,8 +115,8 @@ happyError = \ s i -> Failed $ "Línea "++(show (i::LineNumber))++": Error de pa
 
 data Token = TVar String
                | TTypeE
-               | TTypeN
-               | TTypeL
+               | TTypeNat
+               | TTypeLNat
                | TDef
                | TAbs
                | TDot
@@ -159,8 +159,8 @@ lexer cont s = case s of
                      "Línea "++(show line)++": No se puede reconocer "++(show $ take 10 unknown)++ "..."
                     where lexVar cs = case span isAlpha cs of
                               ("E",rest)     -> cont TTypeE rest
-                              ("Nat", rest)  -> cont TTypeN rest   
-                              ("List", rest) -> cont TTypeL rest  
+                              ("Nat", rest)  -> cont TTypeNat rest   
+                              ("ListN", rest) -> cont TTypeLNat rest  
                               ("def",rest)   -> cont TDef rest
                               ("let", rest)  -> cont TLet rest
                               ("in", rest)   -> cont TIn rest

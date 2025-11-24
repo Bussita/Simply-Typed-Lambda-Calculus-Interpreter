@@ -21,9 +21,6 @@ import Common (LamTerm(LVar, LAbs))
 -- conversion
 -----------------------
 
--- TODO: Cambiar el tipo List Nat por ListN o similar
---  
-
 -- conversion a términos localmente sin nombres
 conversion :: LamTerm -> Term
 conversion = conversionAux []
@@ -68,56 +65,56 @@ sub i t (RecL t1 t2 t3)       = RecL (sub i t t1) (sub i t t2) (sub i t t3)
 -- convierte un valor en el término equivalente
 quote :: Value -> Term
 quote (VLam t f) = Lam t f
-quote (VNum nv)  = quoteN nv
-quote (VList lv) = quoteL lv
+quote (VNum n)  = quoteNat n
+quote (VList xs) = quoteList xs
 
-quoteN :: NumVal -> Term
-quoteN NZero     = Zero
-quoteN (NSuc nv) = Suc $ quoteN nv
+quoteNat :: NumVal -> Term
+quoteNat NZero     = Zero
+quoteNat (NSuc n) = Suc $ quoteNat n
 
-quoteL :: ListVal -> Term
-quoteL VNil          = Nil
-quoteL (VCons nv lv) = Cons (quoteN nv) (quoteL lv) 
+quoteList :: ListVal -> Term
+quoteList VNil          = Nil
+quoteList (VCons n xs) = Cons (quoteNat n) (quoteList xs) 
 
 -- evalúa un término en un entorno dado
 eval :: NameEnv Value Type -> Term -> Value
 eval _ (Bound j)        = error "error: evaluating bounded variable"
-eval ne (Free x)        = case Prelude.lookup x ne of
+eval env (Free x)       = case Prelude.lookup x env of
                             Nothing     -> error "error: variable not in name enviroment"
                             Just (v, t) -> v 
 
 eval _ (Lam t f  )      = VLam t f
 
-eval ne (t1 :@: t2)     = let
-                            (Lam t f) = quote (eval ne t1)
-                            t2'       = quote (eval ne t2)
+eval env (t1 :@: t2)    = let
+                            (Lam t f) = quote (eval env t1)
+                            t2'       = quote (eval env t2)
                             tsub      = sub 0 t2' f 
-                          in eval ne tsub
+                          in eval env tsub
 
-eval ne (Let t1 t2)     = let
-                            t1'  = quote (eval ne t1)
+eval env (Let t1 t2)    = let
+                            t1'  = quote (eval env t1)
                             tsub = sub 0 t1' t2
                           in
-                            eval ne tsub
+                            eval env tsub
 
 eval _ Zero             = VNum NZero
-eval ne (Suc t)         = VNum (NSuc n) where (VNum n) = eval ne t
-eval ne (Rec t1 t2 t3)  = case eval ne t3 of
-                            VNum NZero     -> eval ne t1
-                            VNum (NSuc nv) -> eval ne (t2 :@: Rec t1 t2 t :@: t) 
-                                              where t = quoteN nv
+eval env (Suc t)        = VNum (NSuc n) where (VNum n) = eval env t
+eval env (Rec t1 t2 t3) = case eval env t3 of
+                            VNum NZero     -> eval env t1
+                            VNum (NSuc nv) -> eval env (t2 :@: Rec t1 t2 t :@: t) 
+                                              where t = quoteNat nv
 
 eval _ Nil              = VList VNil
-eval ne (Cons t1 t2)    = let
-                            (VNum n)   = eval ne t1
-                            (VList lv) = eval ne t2
+eval env (Cons t1 t2)   = let
+                            (VNum n)   = eval env t1
+                            (VList lv) = eval env t2
                           in VList (VCons n lv)
 
-eval ne (RecL t1 t2 t3) = case eval ne t3 of
-                             VList VNil          -> eval ne t1
-                             VList (VCons nv lv) -> eval ne (t2 :@: tn :@: tl :@: RecL t1 t2 tl)
-                                                    where tn = quoteN nv
-                                                          tl = quoteL lv
+eval env (RecL t1 t2 t3) = case eval env t3 of
+                             VList VNil          -> eval env t1
+                             VList (VCons nv lv) -> eval env (t2 :@: tn :@: tl :@: RecL t1 t2 tl)
+                                                    where tn = quoteNat nv
+                                                          tl = quoteList lv
 ----------------------
 --- type checker
 -----------------------
@@ -183,9 +180,11 @@ infer' c e (Suc t)          = infer' c e t >>= \tt ->
                                   NatT -> ret NatT
                                   tt   -> matchError NatT tt
 
-infer' c e (Rec t1 t2 t3)   = infer' c e t1 >>= \tt1 ->
-                              infer' c e t2 >>= \tt2 ->
-                              infer' c e t3 >>= \tt3 ->
+
+infer' c e (Rec t1 t2 t3)   = do
+                              tt1 <- infer' c e t1
+                              tt2 <- infer' c e t2
+                              tt3 <- infer' c e t3
                               if (tt3 /= NatT)  then matchError NatT tt3  
                                                 else case tt2 of 
                                                   (FunT  x (FunT y z)) -> if (x == tt1 && y == NatT && z == tt1)
@@ -195,17 +194,19 @@ infer' c e (Rec t1 t2 t3)   = infer' c e t1 >>= \tt1 ->
                                                   _                    -> notKArgError tt2 2
 
 infer' c e Nil              = ret ListT
-infer' c e (Cons t1 t2)     = infer' c e t1 >>= \tt1 ->
-                              infer' c e t2 >>= \tt2 ->
+infer' c e (Cons t1 t2)     = do
+                              tt1 <- infer' c e t1 
+                              tt2 <- infer' c e t2
                               case tt1 of 
                                 NatT -> if (tt2 == ListT)
                                         then ret tt2
                                         else matchError ListT tt2
                                 _    -> matchError NatT tt1 
 
-infer' c e (RecL t1 t2 t3)  = infer' c e t1 >>= \tt1 ->
-                              infer' c e t2 >>= \tt2 ->
-                              infer' c e t3 >>= \tt3 -> 
+infer' c e (RecL t1 t2 t3)  = do
+                              tt1 <- infer' c e t1 
+                              tt2 <- infer' c e t2 
+                              tt3 <- infer' c e t3  
                               if    (tt3 /= ListT)
                               then  matchError ListT tt3
                               else  case tt2 of

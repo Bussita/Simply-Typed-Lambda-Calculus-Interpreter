@@ -106,7 +106,7 @@ printableNumber _       = False
 printType :: Type -> Doc
 printType EmptyT        = text "E"
 printType NatT          = text "Nat"
-printType ListT         = text "List Nat"
+printType ListT         = text "ListN"
 printType (FunT t1 t2)  =
   sep [parensIf (isFun t1) (printType t1), text "->", printType t2]
 
