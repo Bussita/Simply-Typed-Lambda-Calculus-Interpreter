@@ -27,7 +27,7 @@ pp ii vs (Bound k         ) = text (vs !! (ii - k - 1))
 pp _  _  (Free  (Global s)) = text s
 
 pp ii vs (i :@: c         ) = sep
-  [ parensIf (isLam i) (pp ii vs i)
+  [ parensIf (isLam i || isLet i) (pp ii vs i)
   , nest 1 (parensIf (isLam c || isApp c) (pp ii vs c))
   ]
 pp ii vs (Lam t c) =
@@ -42,7 +42,7 @@ pp ii vs (Let t1 t2) =
   text "let" 
     <+> text (vs !! ii)
     <+> text "="              
-    <+> pp ii vs t1
+    <+> parensIf (isLet t1) (pp ii vs t1)
     <+> text "in"
     <+> pp (ii + 1) vs t2
 
@@ -89,6 +89,10 @@ isNil _   = False
 isApp :: Term -> Bool
 isApp (_ :@: _) = True
 isApp _         = False
+
+isLet :: Term -> Bool 
+isLet (Let _ _) = True 
+isLet _ = False 
 
 needParens :: Term -> Bool
 needParens t = not (isNat t || isNil t || isVar t)
